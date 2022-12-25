@@ -1,3 +1,4 @@
+import json
 import streamlit as st
 from streamlit_image_select import image_select
 from diffusers import StableDiffusionPipeline
@@ -18,12 +19,12 @@ from dependencies import \
                   CONTENT_WEIGHT, \
                   STYLE_WEIGHT, \
                   SAVE_MODEL_EVERY, \
-                  SAVE_MODEL_PATH, \
+                  NumpyEncoder, \
                   NUM_EPOCHS, \
                   segments, \
                   ttoi, \
                   saveimg
-                  
+
 import torch.nn as nn
 import torch, os, glob, time, cv2, shutil
 from PIL import Image 
@@ -201,22 +202,23 @@ if os.path.exists("/content/train"):
         st.write("Generate and choose a style image")
 
 INDEX = None
-solutions = None
+solutions = {}
 
 with st.expander("Segment an Image"):
 
+  segimgs = []
   image_file = st.file_uploader("Upload an image to segment", type=["png","jpg","jpeg"])
   
   if image_file is not None:
     with open("content.jpg","wb") as f: 
       f.write(image_file.getbuffer())
 
-  elif image_file is None:
+  if image_file is None:
     if os.path.exists('content.jpg'):
       os.remove('content.jpg')
     if os.path.exists('utils/segment.jpg'):
       os.remove("utils/segment.jpg")
-      solutions = []
+      solutions = {}
     if os.path.exists('segments'):
       shutil.rmtree('segments')
 
@@ -224,31 +226,32 @@ with st.expander("Segment an Image"):
     if st.button("Generate segments"):
       with st.spinner('Generating segments...'):
         solutions = segments()
-        
-      st.write(type(solutions))
+        with open('utils/solutions.json', 'w') as f:
+          json.dump(json.dumps(solutions, cls=NumpyEncoder), f)
 
-    segimgs = []
-    for f in glob.iglob(f"segments/*"):
-      segimgs.append(Image.open(f))
+  if os.path.exists("segments") and len(segimgs)==0:
+    segimgs = [Image.open("segments/"+f) for f in sorted(os.listdir("segments"))]
     
-  if len(solutions)>0:
+    for f in os.listdir("segments"):
+      segimgs.append(Image.open("segments/"+f))
+
+  if len(segimgs)>0:
     INDEX = image_select(
         label="Select a segment",
         images=segimgs,
         return_value="index",
-        captions=[str(i) for i in range(1,len(segimgs)+1)],
         use_container_width = False
     )
-    
-    if segimgs[INDEX]:
+
+    if (INDEX or INDEX==0) and segimgs[INDEX]:
       st.header("Selected Segment:")
       segimgs[INDEX].save('utils/segment.jpg')
-      st.image("utils/segment.jpg")
+      st.image(segimgs[INDEX])
 
 with st.expander("Style transfer on the segment"):
   device = "cuda" if torch.cuda.is_available() else "cpu"
-  st.write(solutions)
-  if os.path.exists("utils/segment.jpg"):
+
+  if os.path.exists("utils/segment.jpg") :
     if st.button("Apply style transfer"):
       with torch.no_grad():
         torch.cuda.empty_cache()
@@ -262,7 +265,11 @@ with st.expander("Style transfer on the segment"):
       with st.spinner("Applying style transfer"):
         nimg = cv2.imread('content.jpg')[:, :, ::-1]
         styleimg = cv2.imread('utils/segment_style.jpg')[:,:,::-1]
-        for i in solutions[INDEX]:
+        if os.path.exists('utils/solutions.json'):
+          with open('utils/solutions.json') as f:
+            solutions = json.loads(json.load(f))
+        
+        for i in solutions[str(INDEX)]:
           nimg[i[0]][i[1]] = styleimg[i[0]][i[1]]
 
         img = Image.fromarray(nimg.astype('uint8'))

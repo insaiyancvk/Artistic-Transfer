@@ -339,9 +339,15 @@ def segments():
 
     if not os.path.exists('segments'):
         os.mkdir('segments')
-    
+
     for i in range(len(segments)):
         im = Image.fromarray(segments[i].astype('uint8'))
         im.save(f'segments/{i}.jpg')
     
     return solutions
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
