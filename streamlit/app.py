@@ -32,7 +32,7 @@ from PIL import Image
 num_cols = 3
 num_rows = 3
 
-st.title("Text Based Style Transfer On Segmented Images")
+st.title("Artistic Transfer")
 
 if 'is_expanded_first' not in st.session_state:
     st.session_state['is_expanded_first'] = True
@@ -231,7 +231,7 @@ with st.expander("Segment an Image"):
 
   if os.path.exists("segments") and len(segimgs)==0:
     segimgs = [Image.open("segments/"+f) for f in sorted(os.listdir("segments"))]
-    
+
     for f in os.listdir("segments"):
       segimgs.append(Image.open("segments/"+f))
 
