@@ -1,5 +1,7 @@
 # Artistic Transfer
 
+This is the implementation of the paper [Segment-Based, User-Generated Image Styling with Neural Style Transfer](https://ieeexplore.ieee.org/document/10150551)
+
 What does it do?
 - Generate style images from a prompt provided by the user
 - Train a Transformation network on the generated style image
